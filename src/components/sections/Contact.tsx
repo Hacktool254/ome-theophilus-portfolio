@@ -77,7 +77,7 @@ export function Contact() {
             <span className="glow-dot" style={{ width: 6, height: 6 }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#f0f2f0", fontFamily: "Inter, sans-serif", letterSpacing: "-0.01em" }}>Ome Theophilus</span>
           </div>
-          <span style={{ fontSize: 12, color: "#5a6358", fontFamily: "Inter, sans-serif" }}>© 2025 · Built with Next.js & GSAP</span>
+          <span style={{ fontSize: 12, color: "#5a6358", fontFamily: "Inter, sans-serif" }}>© 2026 · Built with Next.js & GSAP</span>
         </div>
       </section>
     </div>
