@@ -2,71 +2,85 @@
 
 import { useEffect, useRef } from "react";
 
+/**
+ * Portrait image with smooth 3D card-tilt tracking the mouse.
+ * The whole image rotates in 3D perspective toward the cursor —
+ * same feel as the Three.js plane rotation we had before.
+ */
 export function HeroFace3D() {
-  const imgRef = useRef<HTMLImageElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const imgRef  = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
+    const wrap = wrapRef.current;
+    const img  = imgRef.current;
+    if (!wrap || !img) return;
 
-    let targetX = 0, targetY = 0;
-    let currentX = 0, currentY = 0;
+    let targetRX = 0, targetRY = 0;
+    let currentRX = 0, currentRY = 0;
     let rafId: number;
 
     const onMouseMove = (e: MouseEvent) => {
-      const r = img.parentElement!.getBoundingClientRect();
-      // Normalise to -1 → 1
-      targetX = ((e.clientX - r.left) / r.width  - 0.5) * 2;
-      targetY = ((e.clientY - r.top)  / r.height - 0.5) * 2;
-    };
-    const onMouseLeave = () => {
-      targetX = 0;
-      targetY = 0;
+      const r = wrap.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width  - 0.5; // -0.5 → 0.5
+      const ny = (e.clientY - r.top)  / r.height - 0.5;
+      targetRY =  nx * 22;  // tilt left/right  max ±22deg
+      targetRX = -ny * 14;  // tilt up/down     max ±14deg
     };
 
-    const parent = img.parentElement!;
-    parent.addEventListener("mousemove", onMouseMove);
-    parent.addEventListener("mouseleave", onMouseLeave);
+    const onMouseLeave = () => {
+      targetRX = 0;
+      targetRY = 0;
+    };
+
+    wrap.addEventListener("mousemove", onMouseMove);
+    wrap.addEventListener("mouseleave", onMouseLeave);
 
     const animate = () => {
       rafId = requestAnimationFrame(animate);
-      // Smooth lerp
-      currentX += (targetX - currentX) * 0.06;
-      currentY += (targetY - currentY) * 0.06;
+      currentRX += (targetRX - currentRX) * 0.06;
+      currentRY += (targetRY - currentRY) * 0.06;
 
-      // Translate image slightly in direction of cursor — max ±18px
-      const tx = currentX * 18;
-      const ty = currentY * 18;
-      // Subtle scale on hover
-      const scale = 1 + Math.sqrt(currentX * currentX + currentY * currentY) * 0.012;
-
-      img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+      img.style.transform = `rotateX(${currentRX}deg) rotateY(${currentRY}deg) scale(1.04)`;
     };
     animate();
 
     return () => {
       cancelAnimationFrame(rafId);
-      parent.removeEventListener("mousemove", onMouseMove);
-      parent.removeEventListener("mouseleave", onMouseLeave);
+      wrap.removeEventListener("mousemove", onMouseMove);
+      wrap.removeEventListener("mouseleave", onMouseLeave);
     };
   }, []);
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      ref={imgRef}
-      src="/assets/hero-face.png"
-      alt="Ome Theophilus"
+    <div
+      ref={wrapRef}
       style={{
         position: "absolute",
         inset: 0,
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        objectPosition: "center top",
-        willChange: "transform",
-        transition: "none",
+        perspective: "800px",
+        perspectiveOrigin: "center center",
+        overflow: "hidden",
       }}
-    />
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        ref={imgRef}
+        src="/assets/hero-face.png"
+        alt="Ome Theophilus"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center top",
+          willChange: "transform",
+          transformStyle: "preserve-3d",
+          transformOrigin: "center center",
+          transition: "none",
+        }}
+      />
+    </div>
   );
 }
