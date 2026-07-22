@@ -45,7 +45,7 @@ export function ScrollOrchestrator() {
           const splitTrigger = {
             trigger: aboutScene,
             start: "50% top",
-            end: "78% top",
+            end: "65% top",
             scrub: 1.4,
           };
 
@@ -58,8 +58,8 @@ export function ScrollOrchestrator() {
               opacity: 1, ease: "power2.out",
               scrollTrigger: {
                 trigger: aboutScene,
-                start: "55% top",  // slightly after split starts
-                end: "75% top",
+                start: "52% top",
+                end: "63% top",
                 scrub: 1,
               },
             });
