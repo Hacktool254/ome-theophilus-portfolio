@@ -15,56 +15,52 @@ export function ScrollOrchestrator() {
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       gsap.registerPlugin(ScrollTrigger);
 
-      // Sync with Lenis — must run after Lenis is set up
-      ScrollTrigger.normalizeScroll(false);
-
       ctx = gsap.context(() => {
 
-        /* ── 1. About card slides up over Hero ── */
+        /* ── 1. About entrance: slides up over Hero (same motion as Contact over Stack) */
         const aboutWrap = document.querySelector<HTMLElement>("#about-wrap");
         if (aboutWrap) {
           gsap.fromTo(aboutWrap,
-            { yPercent: 4, scale: 0.98 },
+            { yPercent: 5, scale: 0.97 },
             {
               yPercent: 0, scale: 1, ease: "none",
               scrollTrigger: {
                 trigger: "#hero",
-                start: "bottom 90%",
-                end: "bottom 20%",
-                scrub: 0.6,
+                start: "bottom 95%",
+                end: "bottom top",
+                scrub: 1,
               },
             }
           );
         }
 
-        /* ── 2. About splits open — Projects revealed behind ── */
+        /* ── 2. About splits + Projects fades in — same scrub trigger ── */
         const aboutScene = document.querySelector<HTMLElement>("#about-scene");
         const aboutLeft  = document.querySelector<HTMLElement>("#about-left");
         const aboutRight = document.querySelector<HTMLElement>("#about-right");
         const projectsEl = document.querySelector<HTMLElement>("#projects");
 
         if (aboutScene && aboutLeft && aboutRight) {
-          // Split fires during the second 100dvh of about-scene (50% → 100%)
-          // Tighter scrub = snappier wipe, feels more intentional
+          // about-scene is 200dvh. Halves split during the second 100dvh (50%→100%).
           const splitTrigger = {
             trigger: aboutScene,
             start: "50% top",
-            end: "90% top",
-            scrub: 0.8,
+            end: "bottom top",
+            scrub: 1.4,
           };
 
           gsap.to(aboutLeft,  { xPercent: -100, ease: "power2.inOut", scrollTrigger: splitTrigger });
           gsap.to(aboutRight, { xPercent:  100, ease: "power2.inOut", scrollTrigger: splitTrigger });
 
-          // Projects fades in as About starts to split — fully visible before About is gone
+          // Projects fades in as About splits
           if (projectsEl) {
             gsap.to(projectsEl, {
-              opacity: 1, ease: "none",
+              opacity: 1, ease: "power2.out",
               scrollTrigger: {
                 trigger: aboutScene,
-                start: "52% top",
-                end: "72% top",
-                scrub: 0.6,
+                start: "55% top",  // slightly after split starts
+                end: "75% top",
+                scrub: 1,
               },
             });
           }
@@ -78,50 +74,47 @@ export function ScrollOrchestrator() {
         if (projectsSection && track) {
           const getTravel = () => track.scrollWidth - window.innerWidth;
 
-          const hST = ScrollTrigger.create({
+          ScrollTrigger.create({
             trigger: projectsSection,
             start: "top top",
             end: () => `+=${getTravel()}`,
             pin: true,
-            scrub: 0.6,
-            anticipatePin: 0,
+            scrub: 0.8,
+            anticipatePin: 1,
             invalidateOnRefresh: true,
             animation: gsap.to(track, { x: () => -getTravel(), ease: "none" }),
             onUpdate: (self) => {
               if (barEl) barEl.style.width = `${self.progress * 100}%`;
             },
           });
-
-          // Refresh on resize so travel distance stays correct
-          window.addEventListener("resize", () => hST.refresh());
         }
 
         /* ── 4. Contact slides over Stack ── */
         const contactEl = document.querySelector<HTMLElement>("#contact-outer");
         if (contactEl) {
           gsap.fromTo(contactEl,
-            { yPercent: 4, scale: 0.98 },
+            { yPercent: 5, scale: 0.97 },
             {
               yPercent: 0, scale: 1, ease: "none",
               scrollTrigger: {
                 trigger: contactEl,
-                start: "top 95%",
+                start: "top 98%",
                 end: "top top",
-                scrub: 0.6,
+                scrub: 1,
               },
             }
           );
         }
 
-        /* ── 5. Stack cards stagger in ── */
+        /* ── 5. Stack cards stagger ── */
         gsap.utils.toArray<HTMLElement>(".stack-card").forEach((card) => {
           const fromLeft = card.dataset.from === "left";
-          gsap.set(card, { x: fromLeft ? -50 : 50, opacity: 0 });
+          gsap.set(card, { x: fromLeft ? -60 : 60, opacity: 0 });
           gsap.to(card, {
-            x: 0, opacity: 1, duration: 0.6, ease: "power2.out",
+            x: 0, opacity: 1, duration: 0.7, ease: "power3.out",
             scrollTrigger: {
               trigger: card,
-              start: "top 95%",
+              start: "top 90%",
               toggleActions: "play none none reverse",
             },
           });
@@ -131,22 +124,8 @@ export function ScrollOrchestrator() {
       });
     };
 
-    // Use requestIdleCallback if available, else short timeout
-    // This ensures DOM + Lenis are both ready before GSAP wires triggers
-    const schedule = window.requestIdleCallback
-      ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 400 })
-      : (cb: () => void) => setTimeout(cb, 300);
-
-    let timeoutId: ReturnType<typeof setTimeout>;
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(() => init(), { timeout: 400 });
-    } else {
-      timeoutId = setTimeout(init, 300);
-    }
-    return () => {
-      clearTimeout(timeoutId);
-      ctx?.revert();
-    };
+    const t = setTimeout(init, 500);
+    return () => { clearTimeout(t); ctx?.revert(); };
   }, [reduce]);
 
   return null;
