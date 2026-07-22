@@ -1,230 +1,225 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-/**
- * 3D cursor-spotlight effect on the hero face image.
- * Technique:
- *   - Three.js PlaneGeometry with ~120x150 subdivisions
- *   - hero-face.png as the diffuse map
- *   - hero-depth.png as a displacement map applied in the vertex shader
- *   - Custom GLSL spotlight injected into Three's MeshStandardMaterial:
- *     cursor position → world-space hit → radial shininess reveal on the surface
- * The face curves outward (cheeks, forehead, visor) giving the spotlight
- * physically plausible reflections as the cursor moves.
- */
 export function HeroFace3D() {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [webglFailed, setWebglFailed] = useState(false);
 
   useEffect(() => {
     if (!mountRef.current) return;
     const container = mountRef.current;
+
+    // WebGL support check
+    try {
+      const test = document.createElement("canvas");
+      const gl = test.getContext("webgl2") || test.getContext("webgl");
+      if (!gl) { setWebglFailed(true); return; }
+    } catch {
+      setWebglFailed(true);
+      return;
+    }
+
     let rafId: number;
     let cleanup: (() => void) | null = null;
 
     (async () => {
-      const THREE = await import("three");
+      try {
+        const THREE = await import("three");
 
-      // ── Renderer ──────────────────────────────────────────────────────────
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.0;
-      renderer.outputColorSpace = THREE.SRGBColorSpace;
-      container.appendChild(renderer.domElement);
+        // ── Renderer ────────────────────────────────────────────────────────
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        container.appendChild(renderer.domElement);
 
-      // ── Scene / Camera ────────────────────────────────────────────────────
-      const scene = new THREE.Scene();
-      const aspect = container.clientWidth / container.clientHeight;
-      const camera = new THREE.PerspectiveCamera(42, aspect, 0.01, 100);
-      camera.position.set(0, 0, 2.2);
+        // ── Scene / Camera ──────────────────────────────────────────────────
+        const scene  = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(
+          42, container.clientWidth / container.clientHeight, 0.01, 100
+        );
+        camera.position.set(0, 0, 2.2);
 
-      // ── Textures ──────────────────────────────────────────────────────────
-      const loader = new THREE.TextureLoader();
-      const [faceMap, depthMap] = await Promise.all([
-        loader.loadAsync("/assets/hero-face.png"),
-        loader.loadAsync("/assets/hero-depth.png"),
-      ]);
-      faceMap.colorSpace = THREE.SRGBColorSpace;
+        // ── Textures ────────────────────────────────────────────────────────
+        const loader = new THREE.TextureLoader();
+        const [faceMap, depthMap] = await Promise.all([
+          loader.loadAsync("/assets/hero-face.png"),
+          loader.loadAsync("/assets/hero-depth.png"),
+        ]);
+        faceMap.colorSpace = THREE.SRGBColorSpace;
 
-      // ── Geometry — subdivided plane matching image aspect 1122/1402 ──────
-      const imgAspect = 1122 / 1402; // width / height of the source image
-      const planeH = 2.2;
-      const planeW = planeH * imgAspect;
-      const geo = new THREE.PlaneGeometry(planeW, planeH, 120, 150);
+        // ── Geometry ────────────────────────────────────────────────────────
+        const planeH = 2.2;
+        const planeW = planeH * (1122 / 1402);
+        const geo    = new THREE.PlaneGeometry(planeW, planeH, 120, 150);
 
-      // ── Material with custom GLSL ─────────────────────────────────────────
-      const uHit   = new THREE.Vector3(0, 1000, 0); // starts off-screen
-      const uMouse = { x: 0.5, y: 0.5 };
-      let   isHovered = false;
-      let   uActive = 0;
+        // ── Material + custom GLSL spotlight ────────────────────────────────
+        const uHit   = new THREE.Vector3(0, 1000, 0);
+        const uMouse = { x: 0.5, y: 0.5 };
+        let   isHovered = false;
+        let   uActive   = 0;
 
-      const material = new THREE.MeshStandardMaterial({
-        map: faceMap,
-        displacementMap: depthMap,
-        displacementScale: 0.22,
-        displacementBias: -0.06,
-        roughness: 0.88,
-        metalness: 0.04,
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const shaderRefs: any[] = [];
 
-      // Inject spotlight shader into Three's standard material
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const shaderRefs: any[] = [];
+        const material = new THREE.MeshStandardMaterial({
+          map: faceMap,
+          displacementMap: depthMap,
+          displacementScale: 0.22,
+          displacementBias: -0.06,
+          roughness: 0.88,
+          metalness: 0.04,
+        });
 
-      material.onBeforeCompile = (shader) => {
-        shader.uniforms.uHitPoint = { value: uHit };
-        shader.uniforms.uActive   = { value: 0.0 };
-        shader.uniforms.uRadius   = { value: 0.28 };
-        shader.uniforms.uSoftness = { value: 0.38 };
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uHitPoint = { value: uHit };
+          shader.uniforms.uActive   = { value: 0.0 };
+          shader.uniforms.uRadius   = { value: 0.28 };
+          shader.uniforms.uSoftness = { value: 0.38 };
 
-        // Pass world position to fragment
-        shader.vertexShader = shader.vertexShader
-          .replace(
-            "#include <common>",
-            `#include <common>\nvarying vec3 vWPos;`
-          )
-          .replace(
-            "#include <worldpos_vertex>",
-            `#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`
-          );
+          shader.vertexShader = shader.vertexShader
+            .replace("#include <common>", "#include <common>\nvarying vec3 vWPos;")
+            .replace(
+              "#include <worldpos_vertex>",
+              "#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;"
+            );
 
-        // Spotlight on roughness + emissive green rim glow
-        shader.fragmentShader = shader.fragmentShader
-          .replace(
-            "#include <common>",
-            `#include <common>
+          shader.fragmentShader = shader.fragmentShader
+            .replace(
+              "#include <common>",
+              `#include <common>
 uniform vec3  uHitPoint;
 uniform float uActive, uRadius, uSoftness;
 varying vec3  vWPos;`
-          )
-          .replace(
-            "#include <roughnessmap_fragment>",
-            `#include <roughnessmap_fragment>
-float _d    = distance(vWPos, uHitPoint);
-float _rev  = 1.0 - smoothstep(uRadius, uRadius + uSoftness, _d);
-float _mask = _rev * uActive;
-// Reduce roughness in spotlight → shiny
-roughnessFactor = mix(roughnessFactor, 0.08, _mask * 0.9);
-// Slightly desaturate + brighten the lit area
-diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.18, _mask * 0.55);`
-          );
+            )
+            .replace(
+              "#include <roughnessmap_fragment>",
+              `#include <roughnessmap_fragment>
+float _d   = distance(vWPos, uHitPoint);
+float _rev = 1.0 - smoothstep(uRadius, uRadius + uSoftness, _d);
+float _m   = _rev * uActive;
+roughnessFactor = mix(roughnessFactor, 0.08, _m * 0.9);
+diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.18, _m * 0.55);`
+            );
 
-        shaderRefs.push(shader);
-      };
-      material.needsUpdate = true;
+          shaderRefs.push(shader);
+        };
+        material.needsUpdate = true;
 
-      // ── Mesh ──────────────────────────────────────────────────────────────
-      const mesh = new THREE.Mesh(geo, material);
-      scene.add(mesh);
+        const mesh = new THREE.Mesh(geo, material);
+        scene.add(mesh);
 
-      // ── Lighting — matches image mood ────────────────────────────────────
-      // Ambient
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-      // Green rim from left (matches the photo's green rim light)
-      const rimGreen = new THREE.DirectionalLight(0x47b76e, 1.6);
-      rimGreen.position.set(-2.5, 0.5, 1.5);
-      scene.add(rimGreen);
-      // Violet fill from right
-      const rimViolet = new THREE.DirectionalLight(0x7b2d8b, 0.7);
-      rimViolet.position.set(2.0, -0.3, 1.0);
-      scene.add(rimViolet);
-      // Warm orange point — the visor glow area
-      const visorLight = new THREE.PointLight(0xff8c00, 0.9, 3.0);
-      visorLight.position.set(0, 0.12, 1.2);
-      scene.add(visorLight);
+        // ── Lighting ────────────────────────────────────────────────────────
+        scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+        const rimGreen = new THREE.DirectionalLight(0x47b76e, 1.6);
+        rimGreen.position.set(-2.5, 0.5, 1.5);
+        scene.add(rimGreen);
+        const rimViolet = new THREE.DirectionalLight(0x7b2d8b, 0.7);
+        rimViolet.position.set(2.0, -0.3, 1.0);
+        scene.add(rimViolet);
+        const visorLight = new THREE.PointLight(0xff8c00, 0.9, 3.0);
+        visorLight.position.set(0, 0.12, 1.2);
+        scene.add(visorLight);
 
-      // ── Raycaster for cursor → world position ────────────────────────────
-      const raycaster = new THREE.Raycaster();
-      const plane3D   = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-      const planeHit  = new THREE.Vector3();
-      const target    = new THREE.Vector3(0, 1000, 0);
-      const mouseNDC  = new THREE.Vector2();
+        // ── Mouse tracking ──────────────────────────────────────────────────
+        const raycaster = new THREE.Raycaster();
+        const plane3D   = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        const planeHit  = new THREE.Vector3();
+        const mouseNDC  = new THREE.Vector2();
 
-      const onMouseMove = (e: MouseEvent) => {
-        const r = container.getBoundingClientRect();
-        mouseNDC.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
-        mouseNDC.y = -((e.clientY - r.top)  / r.height) * 2 + 1;
-        uMouse.x = (e.clientX - r.left) / r.width;
-        uMouse.y = (e.clientY - r.top)  / r.height;
-        isHovered = true;
-      };
-      const onMouseLeave = () => { isHovered = false; };
+        const onMouseMove = (e: MouseEvent) => {
+          const r = container.getBoundingClientRect();
+          mouseNDC.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+          mouseNDC.y = -((e.clientY - r.top)  / r.height) * 2 + 1;
+          uMouse.x   =  (e.clientX - r.left) / r.width;
+          uMouse.y   =  (e.clientY - r.top)  / r.height;
+          isHovered  = true;
+        };
+        const onMouseLeave = () => { isHovered = false; };
+        container.addEventListener("mousemove", onMouseMove);
+        container.addEventListener("mouseleave", onMouseLeave);
 
-      container.addEventListener("mousemove", onMouseMove);
-      container.addEventListener("mouseleave", onMouseLeave);
+        // ── Animate ─────────────────────────────────────────────────────────
+        const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+        let idleT = 0;
 
-      // Subtle idle sway
-      let idleT = 0;
+        const animate = () => {
+          rafId = requestAnimationFrame(animate);
+          idleT += 0.008;
 
-      // ── Animate ───────────────────────────────────────────────────────────
-      const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+          uActive = lerp(uActive, isHovered ? 1 : 0, 0.06);
 
-      const animate = () => {
-        rafId = requestAnimationFrame(animate);
-        idleT += 0.008;
+          raycaster.setFromCamera(mouseNDC, camera);
+          raycaster.ray.intersectPlane(plane3D, planeHit);
+          const target = isHovered ? planeHit : new THREE.Vector3(0, 1000, 0);
+          uHit.lerp(target, 0.06);
 
-        // Smooth active blend
-        uActive = lerp(uActive, isHovered ? 1 : 0, 0.06);
+          for (const s of shaderRefs) {
+            s.uniforms.uHitPoint.value.copy(uHit);
+            s.uniforms.uActive.value = uActive;
+          }
 
-        // Project cursor to world plane
-        raycaster.setFromCamera(mouseNDC, camera);
-        raycaster.ray.intersectPlane(plane3D, planeHit);
-        target.copy(isHovered ? planeHit : new THREE.Vector3(0, 1000, 0));
-        uHit.lerp(target, 0.06);
+          mesh.rotation.y = lerp(mesh.rotation.y, (uMouse.x - 0.5) * 0.06 + Math.sin(idleT) * 0.008, 0.04);
+          mesh.rotation.x = lerp(mesh.rotation.x, -(uMouse.y - 0.5) * 0.04 + Math.cos(idleT * 0.7) * 0.005, 0.04);
 
-        // Push uniforms
-        for (const s of shaderRefs) {
-          s.uniforms.uHitPoint.value.copy(uHit);
-          s.uniforms.uActive.value = uActive;
-        }
+          renderer.render(scene, camera);
+        };
+        animate();
 
-        // Subtle idle sway (very gentle tilt following cursor loosely)
-        mesh.rotation.y = lerp(mesh.rotation.y, (uMouse.x - 0.5) * 0.06 + Math.sin(idleT) * 0.008, 0.04);
-        mesh.rotation.x = lerp(mesh.rotation.x, -(uMouse.y - 0.5) * 0.04 + Math.cos(idleT * 0.7) * 0.005, 0.04);
+        // ── Resize ──────────────────────────────────────────────────────────
+        const onResize = () => {
+          camera.aspect = container.clientWidth / container.clientHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(container.clientWidth, container.clientHeight);
+        };
+        window.addEventListener("resize", onResize);
 
-        renderer.render(scene, camera);
-      };
-      animate();
-
-      // ── Resize ────────────────────────────────────────────────────────────
-      const onResize = () => {
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-      };
-      window.addEventListener("resize", onResize);
-
-      cleanup = () => {
-        cancelAnimationFrame(rafId);
-        container.removeEventListener("mousemove", onMouseMove);
-        container.removeEventListener("mouseleave", onMouseLeave);
-        window.removeEventListener("resize", onResize);
-        renderer.dispose();
-        geo.dispose();
-        material.dispose();
-        faceMap.dispose();
-        depthMap.dispose();
-        if (renderer.domElement.parentNode) {
-          renderer.domElement.parentNode.removeChild(renderer.domElement);
-        }
-      };
+        cleanup = () => {
+          cancelAnimationFrame(rafId);
+          container.removeEventListener("mousemove", onMouseMove);
+          container.removeEventListener("mouseleave", onMouseLeave);
+          window.removeEventListener("resize", onResize);
+          renderer.dispose();
+          geo.dispose();
+          material.dispose();
+          faceMap.dispose();
+          depthMap.dispose();
+          renderer.domElement.parentNode?.removeChild(renderer.domElement);
+        };
+      } catch {
+        setWebglFailed(true);
+      }
     })();
 
     return () => { cleanup?.(); };
   }, []);
 
+  // Fallback: plain image if WebGL unavailable
+  if (webglFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src="/assets/hero-face.png"
+        alt="Ome Theophilus"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center top",
+        }}
+      />
+    );
+  }
+
   return (
     <div
       ref={mountRef}
-      style={{
-        width: "100%",
-        height: "100%",
-        position: "absolute",
-        inset: 0,
-        cursor: "none",
-      }}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "none" }}
     />
   );
 }
