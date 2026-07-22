@@ -10,6 +10,32 @@ import { SITE } from "@/lib/data";
  * second 100dvh of split-scene, revealing Projects behind.
  */
 export function About() {
+  const mobileStyles = `
+    @media (max-width: 768px) {
+      #about-wrap {
+        position: relative !important;
+        height: auto !important;
+        border-radius: 24px 24px 0 0 !important;
+      }
+      #about-left {
+        position: relative !important;
+        width: 100% !important;
+        height: auto !important;
+        padding: 60px 24px 40px !important;
+      }
+      #about-right {
+        position: relative !important;
+        width: 100% !important;
+        height: 400px !important;
+        padding: 0 24px 40px !important;
+        justify-content: center !important;
+      }
+      .about-facts-grid {
+        grid-template-columns: 1fr 1fr !important;
+        max-width: 100% !important;
+      }
+    }
+  `;
   const facts = [
     { label: "Based in",  value: "Nairobi, Kenya" },
     { label: "Focus",     value: "AI Systems & Automation" },
@@ -18,6 +44,8 @@ export function About() {
   ];
 
   return (
+    <>
+    <style>{mobileStyles}</style>
     <div
       id="about-wrap"
       style={{
@@ -137,5 +165,6 @@ export function About() {
         </div>
       </div>
     </div>
+    </>
   );
 }

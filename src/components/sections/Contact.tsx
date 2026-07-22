@@ -23,6 +23,12 @@ export function Contact() {
         overflow: "hidden",
       }}
     >
+      <style>{`
+        @media (max-width: 768px) {
+          #contact { padding: 80px 20px 60px !important; }
+          .contact-footer { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+        }
+      `}</style>
       <section
         id="contact"
         style={{ padding: "140px 24px 100px", position: "relative", overflow: "hidden" }}
@@ -72,7 +78,7 @@ export function Contact() {
         </div>
 
         {/* Footer */}
-        <div style={{ maxWidth: 1200, margin: "80px auto 0", paddingTop: 32, borderTop: "1px solid #2a2d2b", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div className="contact-footer" style={{ maxWidth: 1200, margin: "80px auto 0", paddingTop: 32, borderTop: "1px solid #2a2d2b", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="glow-dot" style={{ width: 6, height: 6 }} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#f0f2f0", fontFamily: "Inter, sans-serif", letterSpacing: "-0.01em" }}>Ome Theophilus</span>

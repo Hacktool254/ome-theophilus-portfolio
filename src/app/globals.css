@@ -44,6 +44,12 @@ body {
 
 a, button { cursor: none; }
 
+/* Mobile: restore default cursor, disable custom cursor */
+@media (max-width: 768px) {
+  body, a, button { cursor: auto; }
+  .custom-cursor { display: none !important; }
+}
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

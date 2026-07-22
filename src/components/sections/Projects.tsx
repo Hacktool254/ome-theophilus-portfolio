@@ -56,7 +56,33 @@ export function Projects() {
   const barRef = useRef<HTMLDivElement>(null);
 
   return (
-    /* Outer wrapper — this is the scroll trigger for the horizontal pin */
+    <>
+    <style>{`
+      @media (max-width: 768px) {
+        #projects {
+          height: auto !important;
+          position: relative !important;
+          overflow-y: visible !important;
+        }
+        [data-projects-track] {
+          flex-direction: column !important;
+          height: auto !important;
+          padding: 16px 16px 32px !important;
+          gap: 16px !important;
+          overflow-x: hidden !important;
+        }
+        [data-projects-track] > div {
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          max-height: none !important;
+          flex-shrink: unset !important;
+        }
+        .proj-header {
+          padding: 32px 20px 0 !important;
+        }
+      }
+    `}</style>
     <div
       id="projects"
       data-projects-wrap
@@ -74,7 +100,7 @@ export function Projects() {
       }}
     >
       {/* Header */}
-      <div style={{ padding: "48px 60px 0", maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
+      <div className="proj-header" style={{ padding: "48px 60px 0", maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <span className="glow-dot" />
           <span style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "#47b76e", fontFamily: "Inter, sans-serif" }}>Work</span>
@@ -184,5 +210,6 @@ export function Projects() {
         </div>
       </div>
     </div>
+    </>
   );
 }

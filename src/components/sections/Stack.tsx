@@ -73,6 +73,13 @@ const STACK_WITH_ICONS = [
 
 export function Stack() {
   return (
+    <>
+    <style>{`
+      @media (max-width: 768px) {
+        #stack { padding: 60px 20px 80px !important; }
+        .stack-grid { grid-template-columns: 1fr !important; }
+      }
+    `}</style>
     <div
       id="stack-outer"
       style={{
@@ -97,7 +104,7 @@ export function Stack() {
             </h2>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 20 }}>
+          <div className="stack-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(340px,100%), 1fr))", gap: 20 }}>
             {STACK_WITH_ICONS.map((cat, i) => {
               const fromLeft = i % 2 === 0;
               return (
@@ -160,5 +167,6 @@ export function Stack() {
         </div>
       </section>
     </div>
+    </>
   );
 }

@@ -142,7 +142,6 @@ export function Navbar() {
               textDecoration: "none",
               transition: "background 0.2s, transform 0.15s",
               fontFamily: "Inter, sans-serif",
-              display: "none",
             }}
             className="hidden md:inline-flex"
             onMouseEnter={(e) => {
