@@ -48,6 +48,8 @@ a, button { cursor: none; }
 @media (max-width: 768px) {
   body, a, button { cursor: auto; }
   .custom-cursor { display: none !important; }
+  /* Collapse 200dvh GSAP scroll space — not needed on mobile */
+  .about-scene { min-height: auto !important; }
 }
 
 ::-webkit-scrollbar { width: 4px; }

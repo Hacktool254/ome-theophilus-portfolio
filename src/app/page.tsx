@@ -56,7 +56,7 @@ export default function Home() {
 
               {/* 2. About-scene: 200dvh. About sticky inside, slides over Hero.
                       Second 100dvh: About halves split. Projects fades in simultaneously. */}
-              <div id="about-scene" style={{ position: "relative", zIndex: 10, minHeight: "200dvh", marginTop: "-48px" }}>
+              <div id="about-scene" className="about-scene" style={{ position: "relative", zIndex: 10, minHeight: "200dvh", marginTop: "-48px" }}>
                 <About />
               </div>
 
