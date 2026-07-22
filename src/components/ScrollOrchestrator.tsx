@@ -45,7 +45,7 @@ export function ScrollOrchestrator() {
           const splitTrigger = {
             trigger: aboutScene,
             start: "50% top",
-            end: "bottom top",
+            end: "78% top",
             scrub: 1.4,
           };
 
